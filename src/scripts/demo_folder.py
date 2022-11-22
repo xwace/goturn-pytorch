@@ -61,7 +61,7 @@ def click_and_crop(event, x, y, flags, param):
         img_dbg = cv2.rectangle(img_dbg, refPt[0], refPt[1], (0, 255, 0), 2)
         # img_dbg = cv2.cvtColor(img_dbg, cv2.COLOR_RGB2BGR)
         cv2.imshow("image", img_dbg)
-        cv2.waitKey(0)
+        cv2.waitKey()
 
 
 cv2.setMouseCallback("image", click_and_crop)
@@ -155,21 +155,21 @@ class GoturnTracker:
         """load model """
         # loader = loadfromfolder(args.input)
         # self._vid_frames = loader.get_video_frames()
-        #
+
         # model_dir = Path(args.model_dir)
         # # Checkpoint path
         # ckpt_dir = model_dir.joinpath('checkpoints')
         # ckpt_path = next(ckpt_dir.glob('*.ckpt'))
+        # model = GoturnTrain.load_from_checkpoint(ckpt_path)
+
 
         loader = loadfromfolder("/home/star/Desktop/goturn-pytorch/test/8")
         self._vid_frames = loader.get_video_frames()
         ckpt_path = "/home/star/Desktop/goturn-pytorch/models/checkpoints/epoch=1-step=192.ckpt"
-
         hprams = get_args1()
         model = GoturnTrain(hprams)
         checkpoint = torch.load(ckpt_path)
         model.load_state_dict(checkpoint['state_dict'], strict=False)
-        # model = GoturnTrain.load_from_checkpoint(checkpoint_path = str(ckpt_path))
 
         model.eval()
         model.freeze()
@@ -230,6 +230,7 @@ class GoturnTracker:
         target_pad_in = self.preprocess(target_pad, mean=None).unsqueeze(0)
         cur_search_region_in = self.preprocess(cur_search_region,
                                                mean=None).unsqueeze(0)
+
         pred_bb = self._model.forward(target_pad_in,
                                       cur_search_region_in)
         if self._dbg:
@@ -313,8 +314,7 @@ class GoturnTracker:
             # curr_dbg = cv2.cvtColor(curr_dbg, cv2.COLOR_RGB2BGR)
             cv2.imshow('image', curr_dbg)
             # cv2.imwrite('./output/{:04d}.png'.format(i), curr_dbg)
-            cv2.waitKey(20)
-
+            cv2.waitKey(1)
 
 if __name__ == "__main__":
     # ap = argparse.ArgumentParser()

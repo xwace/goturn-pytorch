@@ -18,6 +18,7 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 import torch.backends.cudnn as cudnn
+import visdom
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.core.lightning import LightningModule
@@ -245,7 +246,6 @@ class GoturnTrain(LightningModule):
 
             out = np.concatenate((prev_img[np.newaxis, ...], curr_img[np.newaxis, ...]), axis=0)
             out = np.transpose(out, [0, 3, 1, 2])
-
             self._viz.plot_images_np(out, title='sample_{}'.format(i),
                                      env='goturn_{}'.format(prefix))
 
@@ -276,20 +276,6 @@ class GoturnTrain(LightningModule):
         output = OrderedDict({'loss': loss,
                               'progress_bar': tqdm_dict,
                               'log': tqdm_dict})
-        # print("params",self.hparams_)
-        # print("size of input ", prev.float().size(), curr.float().size())
-        # torch.onnx.export(self._model,  # model being run ##since model is in the cuda mode, input also need to be
-        #                   (prev.float(), curr.float()),  # model input (or a tuple for multiple inputs)
-        #                   "model_troch_export.onnx",  # where to save the model (can be a file or file-like object)
-        #                   export_params=True,  # store the trained parameter weights inside the model file
-        #                   opset_version=10,  # the ONNX version to export the model to
-        #                   do_constant_folding=True,  # whether to execute constant folding for optimization
-        #                   input_names=['input1', 'input2'],  # the model's input names
-        #                   output_names=['output'],  # the model's output names
-        #                   dynamic_axes={'input1': {0: 'batch_size'},  # variable lenght axes
-        #                                 'input2': {0: 'batch_size'},
-        #                                 'output': {0: 'batch_size'}}
-        #                   )
         return output
 
     def validation_step(self, batch, batch_idx):
@@ -330,9 +316,6 @@ class GoturnTrain(LightningModule):
     def validation_end(self, outputs):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
         return {'val_loss': avg_loss}
-
-    def get_backBone(self):
-        return self._model
 
 
 def get_args():
@@ -431,9 +414,6 @@ def main(hparams):
     model = GoturnTrain(hparams, dbg=True)
     # torch.save(model._model, "hahha.pth")
 
-    # dummy_input1 =  torch.load("prev.pt")
-    # dummy_input2 = torch.load("curr.pt")
-    # model.to_onnx("model.onnx",(dummy_input1,dummy_input2),export_params = False)
     # ckpt_resume_path = './caffenet-dbg-2/_ckpt_epoch_1.ckpt'
     # ckpt_cb = ModelCheckpoint(filepath=hparams.save_path, save_top_k=-1,
     #                           save_weights_only=False)
@@ -446,65 +426,61 @@ def main(hparams):
     #                   val_percent_check=1, profiler=True)
 
     # model.find_lr()
-    ckpt_cb = ModelCheckpoint(hparams.save_path, save_top_k=-1,
-                              save_weights_only=True)
-    # ckpt_cb.FILE_EXTENSION = ".onnx"
-    trainer = Trainer(max_epochs=1, gpus=0, callbacks=[ckpt_cb])
-    print("done training")
-    mod = model.get_backBone()
+    ckpt_cb = ModelCheckpoint(hparams.save_path, save_top_k=-1,save_weights_only=True)
+    trainer = Trainer(max_epochs=6, gpus=0, callbacks=[ckpt_cb])
+    # trainer = Trainer(limit_train_batches=0.1, limit_val_batches=0.1, limit_test_batches=0.1)
     trainer.fit(model)
 
 
-    # prev = np.load("/home/star/Desktop/goturn-pytorch/src/scripts/prev.npy")
-    # curr = np.load("/home/star/Desktop/goturn-pytorch/src/scripts/curr.npy")
-    print("start saving")
-    # torch.onnx.export(mod,  # model being run ##since model is in the cuda mode, input also need to be
-    #                   (),  # model input (or a tuple for multiple inputs)
-    #                   "model_troch_export.onnx",  # where to save the model (can be a file or file-like object)
-    #                   export_params=True,  # store the trained parameter weights inside the model file
-    #                   opset_version=10,  # the ONNX version to export the model to
-    #                   do_constant_folding=True,  # whether to execute constant folding for optimization
-    #                   input_names=['input1', 'input2'],  # the model's input names
-    #                   output_names=['output'],  # the model's output names
-    #                   dynamic_axes={'input1': {0: 'batch_size'},  # variable lenght axes
-    #                                 'input2': {0: 'batch_size'},
-    #                                 'output': {0: 'batch_size'}}
+    #1.直接在fit后面用torch.onnx输出模型model._model
+    # torch.onnx.export(model._model,(torch.rand(1,3,227,227),torch.rand(1,3,227,227)),  # model input (or a tuple for multiple inputs)
+    #                   "oswin.onnx",export_params=True, opset_version=10,do_constant_folding=True,
+    #                   input_names=['x1', 'x2'],
+    #                   output_names=['out']
     #                   )
-    print("finish saving")
-    # trainer.save_checkpoint("/home/star/Desktop/goturn-pytorch/src/scripts/caffenet/example.pth")
-    torch.save(model._model, "hahha.pth")
 
+    #2.正常运行版本
+    # torch.save(model._model, "hahha.pth")
 
 from onnxsim import simplify
 import onnx
 if __name__ == "__main__":
     # main(get_args())
 
-    # model = GoturnNetwork()
-    # model.load_state_dict(dict_model)
-
-    model = torch.load("hahha.pth")
-    model.eval()
+    # model = torch.load("hahha.pth")
+    # model.eval()
     with torch.no_grad():
+        #读取保存的pytorch模型转onnx
         # x1 = torch.rand(1, 3, 227, 227)
         # x2 = torch.rand(1, 3, 227, 227)
         # torch.onnx.export(model, (x1, x2), "hahha.onnx", export_params = True,
         #                   input_names=["x1", "x2"], output_names=["out"], opset_version = 10)
 
+        #精简onnx模型
+        # onnx_model = onnx.load("oswin.onnx")  # load onnx model
+        # model_simp, check = simplify(onnx_model)
+        # assert check, "Simplified ONNX model could not be validated"
+        # onnx.save(model_simp, "oswin.onnx")
+        # print("finish")
 
-        onnx_model = onnx.load("hahha.onnx")  # load onnx model
-        model_simp, check = simplify(onnx_model)
-        assert check, "Simplified ONNX model could not be validated"
-        onnx.save(model_simp, "hahha.onnx")
-
-        # input1 = np.random.rand(1,3,227,227)
-        # input1 = input1.astype(np.float)
-        # input2 = np.random.rand(1,3,227,227)
-        # input2 = input2.astype(np.float)
-        # x1 = torch.rand(1, 3, 227,227)
-        # x2 = torch.rand(1, 3, 227,227)
-
+        #pytorch方式推理
+        # x1 = torch.rand(1, 3, 227,227) *255
+        # x2 = torch.rand(1, 3, 227,227) *255
         # out = model(x1, x2)
         # print(out)
 
-    pass
+        #测试onnx推理预测结果
+        # onnx_model = onnx.load("oswin.onnx")
+        # onnx.checker.check_model(onnx_model)
+        # import onnxruntime
+        # ort_session = onnxruntime.InferenceSession("oswin.onnx")
+        # x1 = torch.rand(1, 3, 227,227) *255
+        # x2 = torch.rand(1, 3, 227,227) *255
+        # output = ort_session.run(None, {
+        #     "x1": x1.numpy().astype(np.float32),
+        #     "x2": x2.numpy().astype(np.float32)
+        # })
+        #
+        # print(x1,"\n",x2)
+        # print("\n",output)
+        pass

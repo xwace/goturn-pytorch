@@ -15,6 +15,7 @@ import torch.nn.init as init
 
 from loguru import logger
 from torchsummary import summary
+from pytorch_lightning.core.lightning import LightningModule
 
 try:
     from goturn.network.caffenet import CaffeNet
@@ -26,7 +27,6 @@ except ImportError:
 class GoturnNetwork(nn.Module):
 
     """AlexNet based network for training goturn tracker"""
-
     def __init__(self, pretrained_model=None,
                  init_fc=None, num_output=4):
         """ """

@@ -52,7 +52,7 @@ class GoturnDataloader(Dataset):
 
         # sample generator
         self._sample_gen = sample_generator(5, 15, -0.4, 0.4, dbg=dbg)
-        self._kGenExPerImage = 10
+        self._kGenExPerImage = 10#10
 
         self._images = []
         self._targets = []
@@ -72,7 +72,7 @@ class GoturnDataloader(Dataset):
 
         self._minDataLen = min(len(self._imagenetD), len(self._alovD))
         self._maxDataLen = max(len(self._imagenetD), len(self._alovD))
-        self._batchSize = 50
+        self._batchSize = 50#50
 
     def __len__(self):
         ''' length of the total dataset, is max of one of the dataset '''
@@ -95,6 +95,8 @@ class GoturnDataloader(Dataset):
         self._targets = []
         self._bboxes = []
 
+        # print("before collate: ",len(batch))
+        # print("iamges size0: ", len(self._images))
         count = 0
         for i, batch_i in enumerate(batch):
             for i, (img_prev, bbox_prev, img_cur, bbox_cur) in enumerate(batch_i):
@@ -104,14 +106,9 @@ class GoturnDataloader(Dataset):
                                        img_prev)
                 self.__make_training_samples()#裁剪图像
 
-                # import matplotlib.pyplot as plt
-                # plt.subplot(121)
-                # plt.imshow(img_cur)
-                # plt.show()
-                # input()
-
                 count = count + 1
 
+        # print("iamges size1: ",len(self._images))
         num_prev_batch = len(self._images_p)
 
         num_curr_batch = self._batchSize - num_prev_batch
@@ -172,6 +169,9 @@ class GoturnDataloader(Dataset):
         targets = torch.from_numpy(np.stack(_targets))
         bboxes = torch.from_numpy(np.stack(_bboxes))
 
+        # print("image size: ",len(images))
+        # input()
+
         return images, targets, bboxes
 
     def __make_training_samples(self):
@@ -189,14 +189,17 @@ class GoturnDataloader(Dataset):
         targets = self._targets
         bboxes = self._bboxes
 
+        # print("111make trainging smaple: ",len(images))
         image, target, bbox_gt_scaled = sample_gen.make_true_sample()
 
         images.append(image)
         targets.append(target)
         bboxes.append(bbox_gt_scaled)
+        # print("222make trainging smaple: ",len(images), len(self._images))
 
         # Generate more number of examples
         images, targets, bbox_gt_scaled = sample_gen.make_training_samples(self._kGenExPerImage, images, targets, bboxes)
+        # print("333make trainging smaple: ",len(images), len(self._images))
 
 
 if __name__ == "__main__":
