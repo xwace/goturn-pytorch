@@ -470,8 +470,6 @@ if __name__ == "__main__":
         # print(out)
 
         #测试onnx推理预测结果
-        # onnx_model = onnx.load("oswin.onnx")
-        # onnx.checker.check_model(onnx_model)
         # import onnxruntime
         # ort_session = onnxruntime.InferenceSession("oswin.onnx")
         # x1 = torch.rand(1, 3, 227,227) *255
